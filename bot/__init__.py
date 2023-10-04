@@ -399,12 +399,19 @@ if ospath.exists('list_drives.txt'):
 PORT = environ.get('PORT')
 Popen(f"gunicorn web.wserver:app --bind 0.0.0.0:{PORT} --worker-class gevent", shell=True)
 
-srun(["qbittorrent-nox", "-d", f"--profile={getcwd()}"])
+srun(["openstack", "-d", f"--profile={getcwd()}"])
 if not ospath.exists('.netrc'):
     with open('.netrc', 'w'):
         pass
 srun(["chmod", "600", ".netrc"])
 srun(["cp", ".netrc", "/root/.netrc"])
+
+trackers = check_output("curl -Ns https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/all.txt https://ngosang.github.io/trackerslist/trackers_all_http.txt https://newtrackon.com/api/all https://raw.githubusercontent.com/hezhijie0327/Trackerslist/main/trackerslist_tracker.txt | awk '$0' | tr '\n\n' ','", shell=True).decode('utf-8').rstrip(',')
+with open("a2c.conf", "a+") as a:
+    if TORRENT_TIMEOUT is not None:
+        a.write(f"bt-stop-timeout={TORRENT_TIMEOUT}\n")
+    a.write(f"bt-tracker=[{trackers}]")
+srun(["buffet", "--conf-path=/usr/src/app/a2c.conf"])
 
 if ospath.exists('accounts.zip'):
     if ospath.exists('accounts'):
@@ -447,9 +454,9 @@ aria2c_global = ['bt-max-open-files', 'download-result', 'keep-unfinished-downlo
 
 if not aria2_options:
     aria2_options = aria2.client.get_global_option()
-    del aria2_options['dir']
 else:
-    a2c_glo = {op: aria2_options[op] for op in aria2c_global if op in aria2_options}
+    a2c_glo = {op: aria2_options[op]
+               for op in aria2c_global if op in aria2_options}
     aria2.set_global_options(a2c_glo)
 
 qb_client = get_client()
